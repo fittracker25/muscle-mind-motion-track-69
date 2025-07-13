@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Mail, Lock, Eye, EyeOff, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { authService } from '@/services/AuthService';
 
 interface SignInPageProps {
   onBack: () => void;
@@ -24,15 +25,22 @@ export const SignInPage: React.FC<SignInPageProps> = ({ onBack, onSignInComplete
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate sign in process
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await authService.signIn(email, password);
       toast({
         title: "Welcome back!",
         description: "You have successfully signed in.",
       });
       onSignInComplete();
-    }, 1500);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to sign in. Please check your credentials.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleGoogleSignIn = () => {

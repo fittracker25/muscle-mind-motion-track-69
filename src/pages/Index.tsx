@@ -377,7 +377,6 @@ const Index = () => {
         <DarkModeToggle />
         {userData && <RexChatbot userData={userData} workoutPlan={workoutPlan} onPlanModified={setWorkoutPlan} />}
         <Dashboard 
-          userName={userData?.name}
           onStartWorkout={handleStartWorkout}
           onModifySchedule={handleModifySchedule}
           onViewPlan={handleViewPlan}
