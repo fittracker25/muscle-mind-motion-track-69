@@ -12,7 +12,6 @@ import { RexChatbot } from '@/components/RexChatbot';
 import { googleAIService, WorkoutPlan } from '@/services/GoogleAIService';
 import { ModifySchedule } from '@/components/ModifySchedule';
 import { ViewPlan } from '@/components/ViewPlan';
-import { SignInDialog } from '@/components/SignInDialog';
 import { LoginDialog } from '@/components/LoginDialog';
 import { SignInPage } from '@/components/SignInPage';
 import { useWorkoutPlan } from '@/contexts/WorkoutPlanContext';
@@ -35,7 +34,6 @@ const Index = () => {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [pendingPlan, setPendingPlan] = useState<WorkoutPlan | null>(null);
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
-  const [showSignInDialog, setShowSignInDialog] = useState(false);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const { setWorkoutPlan, workoutPlan } = useWorkoutPlan();
   const { user, loading } = useAuth();
@@ -117,8 +115,6 @@ const Index = () => {
   };
 
   const handleSignInComplete = async () => {
-    setShowSignInDialog(false);
-    
     // Wait a bit for auth state to update after signup
     setTimeout(async () => {
       // If we have a pending plan, save everything and go to dashboard
@@ -179,6 +175,10 @@ const Index = () => {
     }, 500);
   };
 
+  const handleDirectSignInComplete = () => {
+    setAppState('dashboard');
+  };
+
   const handleDirectSignIn = () => {
     setShowLoginDialog(true);
   };
@@ -189,8 +189,8 @@ const Index = () => {
   };
 
   const handleScheduleApproved = async (plan: WorkoutPlan) => {
-    // Trigger sign up flow with the approved plan
-    setShowSignInDialog(true);
+    // Go directly to sign-in page for schedule approval
+    setAppState('sign-in');
   };
 
   const handleConfirmAndSignUp = async (plan: WorkoutPlan) => {
@@ -333,11 +333,6 @@ const Index = () => {
               <Card className="w-full max-w-4xl p-8 bg-glass/30 backdrop-blur-glass border-glass-border shadow-elevated">
                 <OnboardingForm onComplete={handleOnboardingComplete} />
               </Card>
-              <SignInDialog 
-                isOpen={showSignInDialog}
-                onClose={() => setShowSignInDialog(false)}
-                onSignInComplete={handleSignInComplete}
-              />
             </>
           )}
         </div>
@@ -356,11 +351,6 @@ const Index = () => {
           isOpen={true}
           onClose={() => setAppState('onboarding')}
           showSignUp={true}
-        />
-        <SignInDialog 
-          isOpen={showSignInDialog}
-          onClose={() => setShowSignInDialog(false)}
-          onSignInComplete={handleSignInComplete}
         />
       </>
     );
@@ -568,7 +558,7 @@ const Index = () => {
     return (
       <SignInPage 
         onBack={() => setAppState('landing')}
-        onSignInComplete={handleDirectSignIn}
+        onSignInComplete={handleDirectSignInComplete}
         onCreateAccount={() => setAppState('onboarding')}
       />
     );
