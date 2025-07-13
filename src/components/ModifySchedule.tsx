@@ -19,7 +19,8 @@ import {
   Target,
   Plus,
   Trash2,
-  Calendar
+  Calendar,
+  CheckCircle
 } from 'lucide-react';
 import { WorkoutPlan, Exercise } from '@/services/GoogleAIService';
 import { googleAIService } from '@/services/GoogleAIService';
@@ -69,6 +70,10 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
       setPendingModification(modifiedPlan);
       setShowApprovalDialog(true);
       setRexModifications('');
+      toast({
+        title: "Plan Modified!",
+        description: "Rex has created a new version of your workout plan. Please review the changes.",
+      });
     } catch (error) {
       console.error('Error modifying plan:', error);
       toast({
@@ -86,7 +91,7 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
       onPlanUpdated(pendingModification);
       setShowApprovalDialog(false);
       setPendingModification(null);
-      setRexModifications('');
+      setModificationMode('select'); // Go back to selection mode
       toast({
         title: "Plan Updated! 🎉",
         description: "Your workout plan has been successfully modified.",
@@ -282,6 +287,34 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
               </div>
             </div>
           </Card>
+
+          {/* Show current plan for reference */}
+          {workoutPlan && (
+            <Card className="p-6 bg-glass/20 backdrop-blur-glass border-glass-border">
+              <h3 className="text-lg font-semibold mb-4">Current Plan Overview</h3>
+              <div className="space-y-3">
+                {workoutPlan.days.map((day, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-glass/30 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="outline" className="min-w-[60px] justify-center">
+                        {day.day}
+                      </Badge>
+                      <div>
+                        <p className="font-medium">{day.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {day.exercises.length} exercises
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Clock className="w-4 h-4" />
+                      {day.duration} min
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
         </div>
       </div>
     );
@@ -468,89 +501,134 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
         </Dialog>
 
         {/* Plan Modification Approval Dialog */}
-        {showApprovalDialog && pendingModification && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-            <Card className="w-full max-w-4xl max-h-[80vh] bg-glass/95 backdrop-blur-glass border-glass-border shadow-elevated overflow-hidden">
-              <div className="p-6 border-b border-glass-border">
-                <h3 className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                  Plan Modification Preview
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Review the changes Rex made to your workout plan
-                </p>
-              </div>
-              
-              <ScrollArea className="max-h-[50vh] p-6">
-                <div className="space-y-4">
-                  {pendingModification.days.map((day, dayIndex) => (
-                    <Card key={dayIndex} className="p-4 bg-glass/30 rounded-lg border border-primary/20">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Badge variant="outline">{day.day}</Badge>
-                        <h4 className="font-semibold">{day.name}</h4>
-                        <span className="text-sm text-muted-foreground">({day.duration} min)</span>
-                      </div>
-                      <div className="space-y-2">
-                        {day.exercises.map((exercise, exerciseIndex) => {
-                          const changeType = getChangeType(dayIndex, exerciseIndex);
-                          const changeColors = {
-                            added: 'bg-green-100 border-green-300 dark:bg-green-900/30 dark:border-green-600',
-                            modified: 'bg-yellow-100 border-yellow-300 dark:bg-yellow-900/30 dark:border-yellow-600',
-                            removed: 'bg-red-100 border-red-300 dark:bg-red-900/30 dark:border-red-600'
-                          };
-                          
-                          return (
-                            <div 
-                              key={exerciseIndex} 
-                              className={`text-sm p-3 rounded border ${
-                                changeType ? changeColors[changeType] : 'bg-glass/20 border-glass-border'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium">{exercise.name}</span>
-                                {changeType && (
-                                  <Badge 
-                                    variant="outline" 
-                                    className={`text-xs ${
-                                      changeType === 'added' ? 'text-green-700 border-green-300' :
-                                      changeType === 'modified' ? 'text-yellow-700 border-yellow-300' :
-                                      'text-red-700 border-red-300'
-                                    }`}
-                                  >
-                                    {changeType.charAt(0).toUpperCase() + changeType.slice(1)}
-                                  </Badge>
-                                )}
-                              </div>
-                              <span className="text-muted-foreground">
-                                {exercise.sets} sets × {exercise.reps} reps
-                              </span>
+        <Dialog open={showApprovalDialog} onOpenChange={setShowApprovalDialog}>
+          <DialogContent className="max-w-6xl max-h-[90vh] bg-glass/95 backdrop-blur-glass border-glass-border">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                Rex's Plan Modifications
+              </DialogTitle>
+              <p className="text-sm text-muted-foreground">
+                Review the changes Rex made to your workout plan
+              </p>
+            </DialogHeader>
+            
+            {pendingModification && (
+              <ScrollArea className="max-h-[60vh] pr-4">
+                <div className="space-y-6">
+                  {/* Summary of changes */}
+                  <Card className="p-4 bg-accent/10 border-accent/20">
+                    <h4 className="font-semibold text-accent mb-2">Summary of Changes</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Rex has modified your workout plan based on your request: "{rexModifications || 'Recent modification'}"
+                    </p>
+                  </Card>
+
+                  {/* Modified plan preview */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Original Plan */}
+                    <div>
+                      <h4 className="font-semibold mb-3 text-muted-foreground">Original Plan</h4>
+                      <div className="space-y-3">
+                        {workoutPlan?.days.map((day, dayIndex) => (
+                          <Card key={dayIndex} className="p-3 bg-glass/20 border-glass-border">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge variant="outline" className="text-xs">{day.day}</Badge>
+                              <span className="font-medium text-sm">{day.name}</span>
                             </div>
-                          );
-                        })}
+                            <div className="space-y-1">
+                              {day.exercises.slice(0, 3).map((exercise, exIndex) => (
+                                <div key={exIndex} className="text-xs text-muted-foreground">
+                                  {exercise.name} - {exercise.sets} × {exercise.reps}
+                                </div>
+                              ))}
+                              {day.exercises.length > 3 && (
+                                <div className="text-xs text-muted-foreground">
+                                  +{day.exercises.length - 3} more exercises
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        ))}
+                    {/* Modified Plan */}
+                    <div>
+                      <h4 className="font-semibold mb-3 text-accent">Modified Plan</h4>
+                      <div className="space-y-3">
+                        {pendingModification.days.map((day, dayIndex) => (
+                          <Card key={dayIndex} className="p-3 bg-accent/10 border-accent/20">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge variant="outline" className="text-xs border-accent text-accent">{day.day}</Badge>
+                              <span className="font-medium text-sm">{day.name}</span>
+                              <span className="text-xs text-muted-foreground">({day.duration} min)</span>
+                            </div>
+                            <div className="space-y-1">
+                              {day.exercises.slice(0, 3).map((exercise, exIndex) => (
+                                <div key={exIndex} className="text-xs">
+                                  <span className="font-medium">{exercise.name}</span>
+                                  <span className="text-muted-foreground ml-1">
+                                    - {exercise.sets} × {exercise.reps}
+                                  </span>
+                                </div>
+                              ))}
+                              {day.exercises.length > 3 && (
+                                <div className="text-xs text-muted-foreground">
+                                  +{day.exercises.length - 3} more exercises
+                                </div>
+                              )}
+                            </div>
+                          </Card>
+                        ))}
                       </div>
-                    </Card>
-                  ))}
+                    </div>
+                  </div>
+                      </div>
+                  {/* Key changes highlight */}
+                  <Card className="p-4 bg-glass/20 border-glass-border">
+                    <h4 className="font-semibold mb-3">Key Changes Made</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium text-primary">Training Days:</span>
+                        <span className="ml-2">{pendingModification.days.length} days/week</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-secondary">Program Duration:</span>
+                        <span className="ml-2">{pendingModification.duration}</span>
+                      </div>
+                      <div className="md:col-span-2">
+                        <span className="font-medium text-accent">Focus Areas:</span>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {pendingModification.goals.map((goal, index) => (
+                            <Badge key={index} variant="secondary" className="text-xs">
+                              {goal}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
                 </div>
               </ScrollArea>
-
-              <div className="p-6 border-t border-glass-border flex gap-3">
-                <Button 
-                  onClick={handleRejectModification}
-                  variant="outline" 
-                  className="flex-1"
-                >
-                  Reject Changes
-                </Button>
-                <Button 
-                  onClick={handleApproveModification}
-                  variant="accent" 
-                  className="flex-1"
-                >
-                  Approve & Apply Changes
-                </Button>
-              </div>
-            </Card>
-          </div>
-        )}
+            )}
+                    </div>
+            <div className="flex gap-3 pt-4 border-t border-glass-border">
+              <Button 
+                onClick={handleRejectModification}
+                variant="outline" 
+                className="flex-1"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Reject Changes
+              </Button>
+              <Button 
+                onClick={handleApproveModification}
+                variant="accent" 
+                className="flex-1"
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Approve & Apply Changes
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

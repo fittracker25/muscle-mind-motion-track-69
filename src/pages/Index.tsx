@@ -331,7 +331,10 @@ const Index = () => {
           ) : (
             <>
               <Card className="w-full max-w-4xl p-8 bg-glass/30 backdrop-blur-glass border-glass-border shadow-elevated">
-                <OnboardingForm onComplete={handleOnboardingComplete} />
+                <OnboardingForm 
+                  onComplete={handleOnboardingComplete} 
+                  onExit={() => setAppState('landing')}
+                />
               </Card>
             </>
           )}

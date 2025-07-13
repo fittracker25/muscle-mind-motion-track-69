@@ -7,15 +7,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, Target, Dumbbell, User, Utensils, Settings, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Target, Dumbbell, User, Utensils, Settings, Plus, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { UserData } from '@/services/FirestoreService';
 
 interface OnboardingFormProps {
   onComplete: (userData: UserData) => void;
+  onExit?: () => void;
 }
 
-const OnboardingForm: React.FC<OnboardingFormProps> = ({ onComplete }) => {
+const OnboardingForm: React.FC<OnboardingFormProps> = ({ onComplete, onExit }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [userData, setUserData] = useState<UserData>({
     name: '', age: '', height: '', weight: '', gender: '',
@@ -576,6 +577,20 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({ onComplete }) => {
 
   return (
     <div className="space-y-8">
+      {/* Exit Button */}
+      {onExit && (
+        <div className="flex justify-end">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onExit}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-5 h-5" />
+          </Button>
+        </div>
+      )}
+
       {/* Progress Bar */}
       <div className="mb-8">
         <div className="flex justify-between items-center mb-2">
