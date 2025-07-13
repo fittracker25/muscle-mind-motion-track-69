@@ -179,5 +179,5 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
     );
   }
 
-  // Rest of the component remains the same...
+  // Rest of the component implementation...
 };
