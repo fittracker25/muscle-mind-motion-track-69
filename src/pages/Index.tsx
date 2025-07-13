@@ -23,6 +23,7 @@ import { ProgressCharts } from '@/components/ProgressCharts';
 import { useAuth } from '@/hooks/useAuth';
 import { firestoreService, UserData } from '@/services/FirestoreService';
 import { authService } from '@/services/AuthService';
+import { auth } from '@/lib/firebase';
 import { Play, Target, BarChart3, Sparkles, Dumbbell, Zap, Trophy, ArrowLeft } from 'lucide-react';
 import heroImage from '@/assets/hero-fitness.jpg';
 import { useToast } from '@/hooks/use-toast';
@@ -118,28 +119,64 @@ const Index = () => {
   const handleSignInComplete = async () => {
     setShowSignInDialog(false);
     
-    // If we have a pending plan, save everything and go to dashboard
-    if (pendingPlan && userData && user) {
-      handleConfirmAndSignUp(pendingPlan);
-    } else if (userData && user) {
-      // Fallback for direct sign in
-      try {
-        const userDataToSave = { ...userData, userId: user.uid };
-        await firestoreService.saveUserData(user.uid, userDataToSave);
-        setUserData(userDataToSave);
-        setAppState('dashboard');
-      } catch (error) {
-        console.error('Error saving user data:', error);
-        toast({
-          title: "Error",
-          description: "Failed to save data. Please try again.",
-          variant: "destructive",
-        });
+    // Wait a bit for auth state to update after signup
+    setTimeout(async () => {
+      // If we have a pending plan, save everything and go to dashboard
+      if (pendingPlan && userData && user) {
+        await handleConfirmAndSignUp(pendingPlan);
+      } else {
+        // Check if we have onboarding data to save
+        if (userData) {
+          // Wait for user state to be available
+          let currentUser = user;
+          let attempts = 0;
+          while (!currentUser && attempts < 10) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            currentUser = auth.currentUser;
+            attempts++;
+          }
+          
+          if (currentUser) {
+            try {
+              const userDataToSave = { ...userData, userId: currentUser.uid };
+              await firestoreService.saveUserData(currentUser.uid, userDataToSave);
+              setUserData(userDataToSave);
+              
+              // If we have a pending plan, save it too
+              if (pendingPlan) {
+                await firestoreService.saveWorkoutPlan(currentUser.uid, pendingPlan);
+                setWorkoutPlan(pendingPlan);
+                setPendingPlan(null);
+              }
+              
+              setAppState('dashboard');
+              
+              toast({
+                title: "Welcome!",
+                description: "Your profile has been saved successfully.",
+              });
+            } catch (error) {
+              console.error('Error saving user data:', error);
+              toast({
+                title: "Error",
+                description: "Failed to save data. Please try again.",
+                variant: "destructive",
+              });
+            }
+          } else {
+            console.error('User not available after signup');
+            toast({
+              title: "Error",
+              description: "Authentication issue. Please try again.",
+              variant: "destructive",
+            });
+          }
+        } else {
+          // Direct sign in from landing page
+          setAppState('dashboard');
+        }
       }
-    } else {
-      // Direct sign in from landing page
-      setAppState('dashboard');
-    }
+    }, 500);
   };
 
   const handleDirectSignIn = () => {
