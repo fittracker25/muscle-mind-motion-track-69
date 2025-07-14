@@ -21,7 +21,8 @@ import {
   Trash2,
   Calendar,
   CheckCircle,
-  Sparkles
+  Sparkles,
+  XCircle
 } from 'lucide-react';
 import { WorkoutPlan, Exercise } from '@/services/GoogleAIService';
 import { googleAIService } from '@/services/GoogleAIService';
@@ -40,10 +41,9 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
   onPlanUpdated,
   userData
 }) => {
-  const [modificationMode, setModificationMode] = useState<'select' | 'rex' | 'manual'>('select');
+  const [modificationMode, setModificationMode] = useState<'select' | 'rex' | 'manual' | 'review'>('select');
   const [rexModifications, setRexModifications] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [pendingModification, setPendingModification] = useState<WorkoutPlan | null>(null);
   const [originalPlan, setOriginalPlan] = useState<WorkoutPlan | null>(workoutPlan);
   const [editingExercise, setEditingExercise] = useState<{
@@ -69,8 +69,7 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
     try {
       const modifiedPlan = await googleAIService.adaptWorkoutPlan(workoutPlan, rexModifications);
       setPendingModification(modifiedPlan);
-      setShowApprovalDialog(true);
-      setRexModifications('');
+      setModificationMode('review');
       toast({
         title: "Plan Modified!",
         description: "Rex has created a new version of your workout plan. Please review the changes.",
@@ -90,9 +89,9 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
   const handleApproveModification = () => {
     if (pendingModification) {
       onPlanUpdated(pendingModification);
-      setShowApprovalDialog(false);
-      setPendingModification(null);
       setModificationMode('select');
+      setPendingModification(null);
+      setRexModifications('');
       toast({
         title: "Plan Updated! 🎉",
         description: "Your workout plan has been successfully modified.",
@@ -101,28 +100,12 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
   };
 
   const handleRejectModification = () => {
-    setShowApprovalDialog(false);
     setPendingModification(null);
+    setModificationMode('rex');
     toast({
       title: "Changes Rejected",
       description: "Your original workout plan remains unchanged.",
     });
-  };
-
-  const getChangeType = (dayIndex: number, exerciseIndex: number) => {
-    if (!originalPlan || !pendingModification) return null;
-    
-    const originalExercise = originalPlan.days[dayIndex]?.exercises[exerciseIndex];
-    const newExercise = pendingModification.days[dayIndex]?.exercises[exerciseIndex];
-    
-    if (!originalExercise && newExercise) return 'added';
-    if (originalExercise && !newExercise) return 'removed';
-    if (originalExercise && newExercise && 
-        (originalExercise.name !== newExercise.name || 
-         originalExercise.sets !== newExercise.sets ||
-         originalExercise.reps !== newExercise.reps)) return 'modified';
-    
-    return null;
   };
 
   const handleExerciseEdit = (dayIndex: number, exerciseIndex: number) => {
@@ -372,6 +355,156 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
     );
   }
 
+  // Plan Review Mode - Show modified plan for approval
+  if (modificationMode === 'review' && pendingModification) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-surface to-surface-secondary p-4 ml-16">
+        <div className="max-w-6xl mx-auto space-y-6">
+          
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button variant="outline" onClick={() => setModificationMode('rex')} className="flex items-center gap-2">
+                <ArrowLeft className="w-4 h-4" />
+                Back
+              </Button>
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-6 h-6 text-accent" />
+                <h1 className="text-3xl font-bold">Review Modified Plan</h1>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleRejectModification} variant="outline" className="flex items-center gap-2">
+                <XCircle className="w-4 h-4" />
+                Cancel Changes
+              </Button>
+              <Button onClick={handleApproveModification} variant="accent" className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                Approve Plan
+              </Button>
+            </div>
+          </div>
+
+          {/* Modification Summary */}
+          <Card className="p-4 bg-accent/10 border-accent/20">
+            <h3 className="font-semibold text-accent mb-2">Rex's Modifications</h3>
+            <p className="text-sm text-muted-foreground">
+              Based on your request: "{rexModifications}"
+            </p>
+          </Card>
+
+          {/* Plan Comparison */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* Original Plan */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 text-muted-foreground">Current Plan</h3>
+              <Card className="p-4 bg-glass/20 backdrop-blur-glass border-glass-border">
+                <h4 className="font-semibold mb-3">{originalPlan?.name}</h4>
+                <div className="space-y-2">
+                  {originalPlan?.days.map((day, index) => (
+                    <div key={index} className="p-2 bg-glass/30 rounded">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium">{day.day}</span>
+                        <span className="text-xs text-muted-foreground">{day.exercises.length} exercises</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{day.name}</p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+
+            {/* Modified Plan */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 text-accent">Modified Plan</h3>
+              <Card className="p-4 bg-accent/10 border-accent/20">
+                <h4 className="font-semibold mb-3">{pendingModification.name}</h4>
+                <div className="space-y-2">
+                  {pendingModification.days.map((day, index) => (
+                    <div key={index} className="p-2 bg-accent/20 rounded">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium">{day.day}</span>
+                        <span className="text-xs text-muted-foreground">{day.exercises.length} exercises</span>
+                      </div>
+                      <p className="text-sm text-accent">{day.name}</p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          </div>
+
+          {/* Detailed Plan View */}
+          <ScrollArea className="h-[50vh]">
+            <div className="space-y-6">
+              <h3 className="text-xl font-semibold">Detailed Modified Plan</h3>
+              {pendingModification.days.map((day, dayIndex) => (
+                <Card key={dayIndex} className="p-6 bg-glass/30 backdrop-blur-glass border-glass-border">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h4 className="text-xl font-semibold">{day.day}</h4>
+                      <p className="text-accent font-medium">{day.name}</p>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Clock className="w-4 h-4" />
+                      {day.duration} min
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {day.exercises.map((exercise, exerciseIndex) => (
+                      <Card key={exerciseIndex} className="p-4 bg-glass/20 border-glass-border/50">
+                        <div className="flex items-start justify-between mb-3">
+                          <h5 className="font-medium flex items-center gap-2">
+                            <Dumbbell className="w-4 h-4 text-primary" />
+                            {exercise.name}
+                          </h5>
+                          <div className="flex flex-wrap gap-1">
+                            {exercise.muscleGroups.map((muscle, muscleIndex) => (
+                              <Badge key={muscleIndex} variant="outline" className="text-xs">
+                                {muscle}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm mb-2">
+                          <div>
+                            <span className="text-muted-foreground">Sets:</span>
+                            <span className="ml-1 font-medium">{exercise.sets}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Reps:</span>
+                            <span className="ml-1 font-medium">{exercise.reps}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Weight:</span>
+                            <span className="ml-1 font-medium">{exercise.weight}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Rest:</span>
+                            <span className="ml-1 font-medium">{exercise.restTime}</span>
+                          </div>
+                        </div>
+                        
+                        {exercise.notes && (
+                          <p className="text-xs text-muted-foreground italic">
+                            {exercise.notes}
+                          </p>
+                        )}
+                      </Card>
+                    ))}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
+      </div>
+    );
+  }
+
   // Manual Edit Mode
   if (modificationMode === 'manual') {
     return (
@@ -483,216 +616,109 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
             </div>
           </ScrollArea>
         </div>
+
+        {/* Exercise Edit Dialog */}
+        {editingExercise && (
+          <Dialog open={!!editingExercise} onOpenChange={() => setEditingExercise(null)}>
+            <DialogContent className="max-w-md bg-glass/95 backdrop-blur-glass border-glass-border">
+              <DialogHeader>
+                <DialogTitle>Edit Exercise</DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="exerciseName">Exercise Name</Label>
+                  <Input
+                    id="exerciseName"
+                    value={editingExercise.exercise.name}
+                    onChange={(e) => setEditingExercise(prev => prev ? {
+                      ...prev,
+                      exercise: { ...prev.exercise, name: e.target.value }
+                    } : null)}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="sets">Sets</Label>
+                    <Input
+                      id="sets"
+                      type="number"
+                      value={editingExercise.exercise.sets}
+                      onChange={(e) => setEditingExercise(prev => prev ? {
+                        ...prev,
+                        exercise: { ...prev.exercise, sets: parseInt(e.target.value) || 0 }
+                      } : null)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="reps">Reps</Label>
+                    <Input
+                      id="reps"
+                      value={editingExercise.exercise.reps}
+                      onChange={(e) => setEditingExercise(prev => prev ? {
+                        ...prev,
+                        exercise: { ...prev.exercise, reps: e.target.value }
+                      } : null)}
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="weight">Weight</Label>
+                    <Input
+                      id="weight"
+                      value={editingExercise.exercise.weight}
+                      onChange={(e) => setEditingExercise(prev => prev ? {
+                        ...prev,
+                        exercise: { ...prev.exercise, weight: e.target.value }
+                      } : null)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="restTime">Rest Time</Label>
+                    <Input
+                      id="restTime"
+                      value={editingExercise.exercise.restTime}
+                      onChange={(e) => setEditingExercise(prev => prev ? {
+                        ...prev,
+                        exercise: { ...prev.exercise, restTime: e.target.value }
+                      } : null)}
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Notes</Label>
+                  <Textarea
+                    id="notes"
+                    value={editingExercise.exercise.notes}
+                    onChange={(e) => setEditingExercise(prev => prev ? {
+                      ...prev,
+                      exercise: { ...prev.exercise, notes: e.target.value }
+                    } : null)}
+                    rows={3}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-2 pt-4">
+                <Button variant="outline" onClick={() => setEditingExercise(null)}>
+                  Cancel
+                </Button>
+                <Button onClick={saveExerciseEdit} variant="accent">
+                  Save Changes
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
     );
   }
 
-  // Rex Approval Dialog
-  return (
-    <>
-      <Dialog open={showApprovalDialog} onOpenChange={setShowApprovalDialog}>
-        <DialogContent className="max-w-6xl max-h-[90vh] bg-glass/95 backdrop-blur-glass border-glass-border">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Review Plan Changes
-            </DialogTitle>
-          </DialogHeader>
-          
-          <ScrollArea className="h-[70vh] pr-4">
-            <div className="space-y-6">
-              {/* Summary */}
-              <Card className="p-4 bg-accent/10 border-accent/20">
-                <h3 className="font-semibold text-accent mb-2">Rex's Modifications</h3>
-                <p className="text-sm text-muted-foreground">
-                  Based on your request: "{rexModifications}"
-                </p>
-              </Card>
-
-              {/* Side by side comparison */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
-                {/* Original Plan */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-4 text-muted-foreground">Current Plan</h3>
-                  <div className="space-y-3">
-                    {originalPlan?.days.map((day, index) => (
-                      <Card key={index} className="p-3 bg-glass/20 border-glass-border/50">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="font-medium">{day.day}</span>
-                          <span className="text-xs text-muted-foreground">{day.exercises.length} exercises</span>
-                        </div>
-                        <p className="text-sm text-primary">{day.name}</p>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Modified Plan */}
-                <div>
-                  <h3 className="text-lg font-semibold mb-4 text-accent">Modified Plan</h3>
-                  <div className="space-y-3">
-                    {pendingModification?.days.map((day, index) => (
-                      <Card key={index} className="p-3 bg-accent/10 border-accent/20">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="font-medium">{day.day}</span>
-                          <span className="text-xs text-muted-foreground">{day.exercises.length} exercises</span>
-                        </div>
-                        <p className="text-sm text-accent">{day.name}</p>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Key Changes */}
-              <Card className="p-4 bg-glass/30 backdrop-blur-glass border-glass-border">
-                <h3 className="font-semibold mb-3">Key Changes</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Training Days</p>
-                    <p className="font-medium">
-                      {originalPlan?.days.length} → {pendingModification?.days.length} days
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Duration</p>
-                    <p className="font-medium">{pendingModification?.duration}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Focus</p>
-                    <div className="flex flex-wrap gap-1">
-                      {pendingModification?.goals.map((goal, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          {goal}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            </div>
-          </ScrollArea>
-
-          <div className="flex gap-3 pt-4 border-t border-glass-border">
-            <Button 
-              onClick={handleRejectModification}
-              variant="outline" 
-              className="flex-1 flex items-center gap-2"
-            >
-              <X className="w-4 h-4" />
-              Reject Changes
-            </Button>
-            <Button 
-              onClick={handleApproveModification}
-              variant="accent" 
-              className="flex-1 flex items-center gap-2"
-            >
-              <CheckCircle className="w-4 h-4" />
-              Approve & Apply
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Exercise Edit Dialog */}
-      {editingExercise && (
-        <Dialog open={!!editingExercise} onOpenChange={() => setEditingExercise(null)}>
-          <DialogContent className="max-w-md bg-glass/95 backdrop-blur-glass border-glass-border">
-            <DialogHeader>
-              <DialogTitle>Edit Exercise</DialogTitle>
-            </DialogHeader>
-            
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="exerciseName">Exercise Name</Label>
-                <Input
-                  id="exerciseName"
-                  value={editingExercise.exercise.name}
-                  onChange={(e) => setEditingExercise(prev => prev ? {
-                    ...prev,
-                    exercise: { ...prev.exercise, name: e.target.value }
-                  } : null)}
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="sets">Sets</Label>
-                  <Input
-                    id="sets"
-                    type="number"
-                    value={editingExercise.exercise.sets}
-                    onChange={(e) => setEditingExercise(prev => prev ? {
-                      ...prev,
-                      exercise: { ...prev.exercise, sets: parseInt(e.target.value) || 0 }
-                    } : null)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="reps">Reps</Label>
-                  <Input
-                    id="reps"
-                    value={editingExercise.exercise.reps}
-                    onChange={(e) => setEditingExercise(prev => prev ? {
-                      ...prev,
-                      exercise: { ...prev.exercise, reps: e.target.value }
-                    } : null)}
-                  />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="weight">Weight</Label>
-                  <Input
-                    id="weight"
-                    value={editingExercise.exercise.weight}
-                    onChange={(e) => setEditingExercise(prev => prev ? {
-                      ...prev,
-                      exercise: { ...prev.exercise, weight: e.target.value }
-                    } : null)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="restTime">Rest Time</Label>
-                  <Input
-                    id="restTime"
-                    value={editingExercise.exercise.restTime}
-                    onChange={(e) => setEditingExercise(prev => prev ? {
-                      ...prev,
-                      exercise: { ...prev.exercise, restTime: e.target.value }
-                    } : null)}
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={editingExercise.exercise.notes}
-                  onChange={(e) => setEditingExercise(prev => prev ? {
-                    ...prev,
-                    exercise: { ...prev.exercise, notes: e.target.value }
-                  } : null)}
-                  rows={3}
-                />
-              </div>
-            </div>
-            
-            <div className="flex gap-2 pt-4">
-              <Button variant="outline" onClick={() => setEditingExercise(null)}>
-                Cancel
-              </Button>
-              <Button onClick={saveExerciseEdit} variant="accent">
-                Save Changes
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
-    </>
-  );
+  return null;
 };
