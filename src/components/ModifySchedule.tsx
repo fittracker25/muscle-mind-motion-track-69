@@ -789,6 +789,7 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
                   <Label htmlFor="exerciseName">Exercise Name</Label>
                   <Input
                     id="exerciseName"
+                    placeholder="Enter exercise name"
                     value={editingExercise.exercise.name}
                     onChange={(e) => setEditingExercise(prev => prev ? {
                       ...prev,
@@ -803,6 +804,7 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
                     <Input
                       id="sets"
                       type="number"
+                      placeholder="3"
                       value={editingExercise.exercise.sets}
                       onChange={(e) => setEditingExercise(prev => prev ? {
                         ...prev,
@@ -815,6 +817,7 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
                     <Label htmlFor="reps">Reps</Label>
                     <Input
                       id="reps"
+                      placeholder="8-12"
                       value={editingExercise.exercise.reps}
                       onChange={(e) => setEditingExercise(prev => prev ? {
                         ...prev,
@@ -829,6 +832,7 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
                     <Label htmlFor="weight">Weight</Label>
                     <Input
                       id="weight"
+                      placeholder="60kg or bodyweight"
                       value={editingExercise.exercise.weight}
                       onChange={(e) => setEditingExercise(prev => prev ? {
                         ...prev,
@@ -841,6 +845,7 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
                     <Label htmlFor="restTime">Rest Time</Label>
                     <Input
                       id="restTime"
+                      placeholder="60-90 seconds"
                       value={editingExercise.exercise.restTime}
                       onChange={(e) => setEditingExercise(prev => prev ? {
                         ...prev,
@@ -854,6 +859,7 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
                   <Label htmlFor="notes">Notes</Label>
                   <Textarea
                     id="notes"
+                    placeholder="Form cues and tips"
                     value={editingExercise.exercise.notes}
                     onChange={(e) => setEditingExercise(prev => prev ? {
                       ...prev,
@@ -870,6 +876,199 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
                 </Button>
                 <Button onClick={saveExerciseEdit} variant="accent">
                   Save Changes
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Add Exercise Dialog */}
+        {addingExercise && (
+          <Dialog open={!!addingExercise} onOpenChange={() => setAddingExercise(null)}>
+            <DialogContent className="max-w-md bg-glass/95 backdrop-blur-glass border-glass-border">
+              <DialogHeader>
+                <DialogTitle>Add New Exercise</DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="newExerciseName">Exercise Name</Label>
+                  <Input
+                    id="newExerciseName"
+                    placeholder="Enter exercise name"
+                    value={addingExercise.exercise.name}
+                    onChange={(e) => setAddingExercise(prev => prev ? {
+                      ...prev,
+                      exercise: { ...prev.exercise, name: e.target.value }
+                    } : null)}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="newSets">Sets</Label>
+                    <Input
+                      id="newSets"
+                      type="number"
+                      placeholder="3"
+                      value={addingExercise.exercise.sets}
+                      onChange={(e) => setAddingExercise(prev => prev ? {
+                        ...prev,
+                        exercise: { ...prev.exercise, sets: parseInt(e.target.value) || 0 }
+                      } : null)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="newReps">Reps</Label>
+                    <Input
+                      id="newReps"
+                      placeholder="8-12"
+                      value={addingExercise.exercise.reps}
+                      onChange={(e) => setAddingExercise(prev => prev ? {
+                        ...prev,
+                        exercise: { ...prev.exercise, reps: e.target.value }
+                      } : null)}
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="newWeight">Weight</Label>
+                    <Input
+                      id="newWeight"
+                      placeholder="60kg or bodyweight"
+                      value={addingExercise.exercise.weight}
+                      onChange={(e) => setAddingExercise(prev => prev ? {
+                        ...prev,
+                        exercise: { ...prev.exercise, weight: e.target.value }
+                      } : null)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="newRestTime">Rest Time</Label>
+                    <Input
+                      id="newRestTime"
+                      placeholder="60-90 seconds"
+                      value={addingExercise.exercise.restTime}
+                      onChange={(e) => setAddingExercise(prev => prev ? {
+                        ...prev,
+                        exercise: { ...prev.exercise, restTime: e.target.value }
+                      } : null)}
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="newNotes">Notes</Label>
+                  <Textarea
+                    id="newNotes"
+                    placeholder="Form cues and tips"
+                    value={addingExercise.exercise.notes}
+                    onChange={(e) => setAddingExercise(prev => prev ? {
+                      ...prev,
+                      exercise: { ...prev.exercise, notes: e.target.value }
+                    } : null)}
+                    rows={3}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-2 pt-4">
+                <Button variant="outline" onClick={() => setAddingExercise(null)}>
+                  Cancel
+                </Button>
+                <Button onClick={saveNewExercise} variant="accent">
+                  Add Exercise
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Add Day Dialog */}
+        {addingDay && (
+          <Dialog open={addingDay} onOpenChange={setAddingDay}>
+            <DialogContent className="max-w-md bg-glass/95 backdrop-blur-glass border-glass-border">
+              <DialogHeader>
+                <DialogTitle>Add New Workout Day</DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="dayName">Day</Label>
+                  <Select value={newDay.day} onValueChange={(value) => setNewDay(prev => ({ ...prev, day: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select day" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Monday">Monday</SelectItem>
+                      <SelectItem value="Tuesday">Tuesday</SelectItem>
+                      <SelectItem value="Wednesday">Wednesday</SelectItem>
+                      <SelectItem value="Thursday">Thursday</SelectItem>
+                      <SelectItem value="Friday">Friday</SelectItem>
+                      <SelectItem value="Saturday">Saturday</SelectItem>
+                      <SelectItem value="Sunday">Sunday</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="workoutName">Workout Name</Label>
+                  <Input
+                    id="workoutName"
+                    placeholder="e.g., Upper Body Strength"
+                    value={newDay.name}
+                    onChange={(e) => setNewDay(prev => ({ ...prev, name: e.target.value }))}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="duration">Duration (minutes)</Label>
+                  <Input
+                    id="duration"
+                    type="number"
+                    placeholder="60"
+                    value={newDay.duration}
+                    onChange={(e) => setNewDay(prev => ({ ...prev, duration: parseInt(e.target.value) || 60 }))}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-2 pt-4">
+                <Button variant="outline" onClick={() => setAddingDay(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={saveNewDay} variant="accent">
+                  Add Day
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Delete Confirmation Dialog */}
+        {showDeleteConfirm && (
+          <Dialog open={!!showDeleteConfirm} onOpenChange={() => setShowDeleteConfirm(null)}>
+            <DialogContent className="max-w-md bg-glass/95 backdrop-blur-glass border-glass-border">
+              <DialogHeader>
+                <DialogTitle>Confirm Deletion</DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-4">
+                <p className="text-muted-foreground">
+                  Are you sure you want to delete this {showDeleteConfirm.type}? This action cannot be undone.
+                </p>
+              </div>
+              
+              <div className="flex gap-2 pt-4">
+                <Button variant="outline" onClick={() => setShowDeleteConfirm(null)}>
+                  Cancel
+                </Button>
+                <Button onClick={confirmDelete} variant="destructive">
+                  Delete {showDeleteConfirm.type === 'exercise' ? 'Exercise' : 'Day'}
                 </Button>
               </div>
             </DialogContent>
