@@ -51,8 +51,23 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
     exerciseIndex: number;
     exercise: Exercise;
   } | null>(null);
+  const [addingExercise, setAddingExercise] = useState<{
+    dayIndex: number;
+    exercise: Exercise;
+  } | null>(null);
+  const [addingDay, setAddingDay] = useState(false);
+  const [newDay, setNewDay] = useState({
+    day: '',
+    name: '',
+    duration: 60
+  });
   const [localPlan, setLocalPlan] = useState<WorkoutPlan | null>(workoutPlan);
   const [modifiedExercises, setModifiedExercises] = useState<Set<string>>(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<{
+    type: 'exercise' | 'day';
+    dayIndex: number;
+    exerciseIndex?: number;
+  } | null>(null);
   const { toast } = useToast();
 
   const handleRexModification = async () => {
@@ -113,6 +128,115 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
     
     const exercise = localPlan.days[dayIndex].exercises[exerciseIndex];
     setEditingExercise({ dayIndex, exerciseIndex, exercise: { ...exercise } });
+  };
+
+  const handleAddExercise = (dayIndex: number) => {
+    const newExercise: Exercise = {
+      name: '',
+      sets: 3,
+      reps: '8-12',
+      weight: '',
+      restTime: '60-90 seconds',
+      notes: '',
+      muscleGroups: []
+    };
+    setAddingExercise({ dayIndex, exercise: newExercise });
+  };
+
+  const saveNewExercise = () => {
+    if (!addingExercise || !localPlan || !addingExercise.exercise.name.trim()) {
+      toast({
+        title: "Exercise name required",
+        description: "Please enter an exercise name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const updatedPlan = { ...localPlan };
+    updatedPlan.days[addingExercise.dayIndex].exercises.push(addingExercise.exercise);
+    
+    setLocalPlan(updatedPlan);
+    setAddingExercise(null);
+    
+    toast({
+      title: "Exercise Added",
+      description: "New exercise has been added successfully.",
+    });
+  };
+
+  const handleAddDay = () => {
+    if (!localPlan) return;
+    
+    if (localPlan.days.length >= 7) {
+      toast({
+        title: "Maximum days reached",
+        description: "You can't add more than 7 workout days.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setAddingDay(true);
+  };
+
+  const saveNewDay = () => {
+    if (!localPlan || !newDay.day.trim() || !newDay.name.trim()) {
+      toast({
+        title: "Day information required",
+        description: "Please enter day and workout name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const updatedPlan = { ...localPlan };
+    updatedPlan.days.push({
+      day: newDay.day,
+      name: newDay.name,
+      duration: newDay.duration,
+      exercises: []
+    });
+    
+    setLocalPlan(updatedPlan);
+    setAddingDay(false);
+    setNewDay({ day: '', name: '', duration: 60 });
+    
+    toast({
+      title: "Day Added",
+      description: "New workout day has been added successfully.",
+    });
+  };
+
+  const handleDeleteExercise = (dayIndex: number, exerciseIndex: number) => {
+    setShowDeleteConfirm({ type: 'exercise', dayIndex, exerciseIndex });
+  };
+
+  const handleDeleteDay = (dayIndex: number) => {
+    setShowDeleteConfirm({ type: 'day', dayIndex });
+  };
+
+  const confirmDelete = () => {
+    if (!showDeleteConfirm || !localPlan) return;
+
+    const updatedPlan = { ...localPlan };
+    
+    if (showDeleteConfirm.type === 'exercise' && showDeleteConfirm.exerciseIndex !== undefined) {
+      updatedPlan.days[showDeleteConfirm.dayIndex].exercises.splice(showDeleteConfirm.exerciseIndex, 1);
+      toast({
+        title: "Exercise Deleted",
+        description: "Exercise has been removed successfully.",
+      });
+    } else if (showDeleteConfirm.type === 'day') {
+      updatedPlan.days.splice(showDeleteConfirm.dayIndex, 1);
+      toast({
+        title: "Day Deleted",
+        description: "Workout day has been removed successfully.",
+      });
+    }
+    
+    setLocalPlan(updatedPlan);
+    setShowDeleteConfirm(null);
   };
 
   const saveExerciseEdit = () => {
@@ -523,10 +647,16 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
                 <h1 className="text-3xl font-bold">Manual Edit</h1>
               </div>
             </div>
-            <Button onClick={savePlan} variant="accent" className="flex items-center gap-2">
-              <Save className="w-4 h-4" />
-              Save Changes
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={handleAddDay} variant="secondary" className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Add Day
+              </Button>
+              <Button onClick={savePlan} variant="accent" className="flex items-center gap-2">
+                <Save className="w-4 h-4" />
+                Save Changes
+              </Button>
+            </div>
           </div>
 
           {/* Workout Days */}
@@ -539,9 +669,29 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
                       <h3 className="text-xl font-semibold">{day.day}</h3>
                       <p className="text-primary font-medium">{day.name}</p>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Clock className="w-4 h-4" />
-                      {day.duration} min
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Clock className="w-4 h-4" />
+                        {day.duration} min
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleAddExercise(dayIndex)}
+                        className="flex items-center gap-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Add Exercise
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteDay(dayIndex)}
+                        className="flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        Delete Day
+                      </Button>
                     </div>
                   </div>
                   
@@ -571,6 +721,15 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
                               >
                                 <Edit3 className="w-3 h-3" />
                                 Edit
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDeleteExercise(dayIndex, exerciseIndex)}
+                                className="flex items-center gap-1"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                Delete
                               </Button>
                             </div>
                           </div>

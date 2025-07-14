@@ -72,6 +72,30 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [workoutPlan, setWorkoutPlan] = useState<WorkoutPlan | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Get today's workout
+  const getTodaysWorkout = () => {
+    if (!workoutPlan) return null;
+    
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+    console.log('Today is:', today);
+    console.log('Available workout days:', workoutPlan.days.map(d => d.day));
+    
+    return workoutPlan.days.find(day => {
+      const planDay = day.day.toLowerCase().trim();
+      const todayLower = today.toLowerCase().trim();
+      
+      // Direct match
+      if (planDay === todayLower) return true;
+      
+      // Check if plan day contains today or vice versa
+      if (planDay.includes(todayLower) || todayLower.includes(planDay)) return true;
+      
+      return false;
+    });
+  };
+
+  const todaysWorkout = getTodaysWorkout();
+
   useEffect(() => {
     const loadUserData = async () => {
       if (user) {
@@ -148,15 +172,35 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         {/* Rest Day Section */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-glass/30 rounded-2xl mb-4">
-            <Calendar className="w-8 h-8 text-primary" />
+        {todaysWorkout ? (
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-accent/20 rounded-2xl mb-4">
+              <Dumbbell className="w-8 h-8 text-accent" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">{todaysWorkout.name}</h2>
+            <p className="text-muted-foreground mb-4">
+              {todaysWorkout.exercises.length} exercises • {todaysWorkout.duration} minutes
+            </p>
+            <Button 
+              onClick={onStartWorkout} 
+              variant="accent" 
+              className="flex items-center gap-2"
+            >
+              <Play className="w-5 h-5" />
+              Start Today's Workout
+            </Button>
           </div>
-          <h2 className="text-2xl font-bold mb-2">Rest Day</h2>
-          <p className="text-muted-foreground">
-            No workout scheduled for today. Enjoy your rest!
-          </p>
-        </div>
+        ) : (
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-glass/30 rounded-2xl mb-4">
+              <Calendar className="w-8 h-8 text-primary" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">Rest Day</h2>
+            <p className="text-muted-foreground">
+              No workout scheduled for today. Enjoy your rest!
+            </p>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
