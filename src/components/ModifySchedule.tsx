@@ -24,7 +24,7 @@ import {
   Sparkles,
   XCircle
 } from 'lucide-react';
-import { WorkoutPlan, Exercise } from '@/services/GoogleAIService';
+import { WorkoutPlan, Exercise, WorkoutDay } from '@/services/GoogleAIService';
 import { googleAIService } from '@/services/GoogleAIService';
 import { useToast } from '@/hooks/use-toast';
 
@@ -101,9 +101,16 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
     }
   };
 
-  const handleApproveModification = () => {
+  const handleApproveModification = async () => {
     if (pendingModification) {
-      onPlanUpdated(pendingModification);
+      // Re-estimate durations for all days after Rex modifications
+      const updatedPlan = { ...pendingModification };
+      updatedPlan.days = updatedPlan.days.map(day => ({
+        ...day,
+        duration: estimateDurationFromExercises(day.exercises)
+      }));
+      
+      onPlanUpdated(updatedPlan);
       setModificationMode('select');
       setPendingModification(null);
       setRexModifications('');
@@ -143,7 +150,7 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
     setAddingExercise({ dayIndex, exercise: newExercise });
   };
 
-  const saveNewExercise = () => {
+  const saveNewExercise = async () => {
     if (!addingExercise || !localPlan || !addingExercise.exercise.name.trim()) {
       toast({
         title: "Exercise name required",
@@ -155,6 +162,10 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
 
     const updatedPlan = { ...localPlan };
     updatedPlan.days[addingExercise.dayIndex].exercises.push(addingExercise.exercise);
+    
+    // Update duration for this day based on new exercise count
+    const dayExercises = updatedPlan.days[addingExercise.dayIndex].exercises;
+    updatedPlan.days[addingExercise.dayIndex].duration = estimateDurationFromExercises(dayExercises);
     
     setLocalPlan(updatedPlan);
     setAddingExercise(null);
@@ -180,6 +191,28 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
     setAddingDay(true);
   };
 
+  const sortDaysByWeekOrder = (days: WorkoutDay[]): WorkoutDay[] => {
+    const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    return days.sort((a, b) => {
+      const indexA = dayOrder.indexOf(a.day);
+      const indexB = dayOrder.indexOf(b.day);
+      return indexA - indexB;
+    });
+  };
+
+  const estimateDurationFromExercises = (exercises: Exercise[]): number => {
+    if (exercises.length === 0) return 30; // Default for empty day
+    
+    // Estimate based on number of exercises and typical set times
+    // Assumption: ~3-4 minutes per set (including rest), average 3 sets per exercise
+    const avgSetsPerExercise = 3;
+    const avgTimePerSet = 3.5; // minutes including rest
+    const warmupCooldown = 10; // minutes
+    
+    const estimatedTime = (exercises.length * avgSetsPerExercise * avgTimePerSet) + warmupCooldown;
+    return Math.round(estimatedTime);
+  };
+
   const saveNewDay = () => {
     if (!localPlan || !newDay.day.trim() || !newDay.name.trim()) {
       toast({
@@ -194,9 +227,12 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
     updatedPlan.days.push({
       day: newDay.day,
       name: newDay.name,
-      duration: newDay.duration,
+      duration: estimateDurationFromExercises([]), // Start with empty exercise list
       exercises: []
     });
+    
+    // Sort days in proper order
+    updatedPlan.days = sortDaysByWeekOrder(updatedPlan.days);
     
     setLocalPlan(updatedPlan);
     setAddingDay(false);
@@ -223,6 +259,11 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
     
     if (showDeleteConfirm.type === 'exercise' && showDeleteConfirm.exerciseIndex !== undefined) {
       updatedPlan.days[showDeleteConfirm.dayIndex].exercises.splice(showDeleteConfirm.exerciseIndex, 1);
+      
+      // Update duration for this day after exercise deletion
+      const dayExercises = updatedPlan.days[showDeleteConfirm.dayIndex].exercises;
+      updatedPlan.days[showDeleteConfirm.dayIndex].duration = estimateDurationFromExercises(dayExercises);
+      
       toast({
         title: "Exercise Deleted",
         description: "Exercise has been removed successfully.",
@@ -239,11 +280,15 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
     setShowDeleteConfirm(null);
   };
 
-  const saveExerciseEdit = () => {
+  const saveExerciseEdit = async () => {
     if (!editingExercise || !localPlan) return;
 
     const updatedPlan = { ...localPlan };
     updatedPlan.days[editingExercise.dayIndex].exercises[editingExercise.exerciseIndex] = editingExercise.exercise;
+    
+    // Update duration for this day based on current exercise count
+    const dayExercises = updatedPlan.days[editingExercise.dayIndex].exercises;
+    updatedPlan.days[editingExercise.dayIndex].duration = estimateDurationFromExercises(dayExercises);
     
     const exerciseKey = `${editingExercise.dayIndex}-${editingExercise.exerciseIndex}`;
     setModifiedExercises(prev => new Set(prev).add(exerciseKey));
@@ -1003,15 +1048,20 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
                     <SelectTrigger>
                       <SelectValue placeholder="Select day" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Monday">Monday</SelectItem>
-                      <SelectItem value="Tuesday">Tuesday</SelectItem>
-                      <SelectItem value="Wednesday">Wednesday</SelectItem>
-                      <SelectItem value="Thursday">Thursday</SelectItem>
-                      <SelectItem value="Friday">Friday</SelectItem>
-                      <SelectItem value="Saturday">Saturday</SelectItem>
-                      <SelectItem value="Sunday">Sunday</SelectItem>
-                    </SelectContent>
+                     <SelectContent>
+                       {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                         const isDisabled = localPlan?.days.some(existingDay => existingDay.day === day);
+                         return (
+                           <SelectItem 
+                             key={day} 
+                             value={day} 
+                             disabled={isDisabled}
+                           >
+                             {day} {isDisabled && '(Already scheduled)'}
+                           </SelectItem>
+                         );
+                       })}
+                     </SelectContent>
                   </Select>
                 </div>
                 
@@ -1025,16 +1075,12 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
                   />
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="duration">Duration (minutes)</Label>
-                  <Input
-                    id="duration"
-                    type="number"
-                    placeholder="60"
-                    value={newDay.duration}
-                    onChange={(e) => setNewDay(prev => ({ ...prev, duration: parseInt(e.target.value) || 60 }))}
-                  />
-                </div>
+                 <div className="space-y-2">
+                   <Label className="text-sm text-muted-foreground">Duration</Label>
+                   <p className="text-sm text-muted-foreground">
+                     Duration will be automatically estimated based on exercises added to this day.
+                   </p>
+                 </div>
               </div>
               
               <div className="flex gap-2 pt-4">

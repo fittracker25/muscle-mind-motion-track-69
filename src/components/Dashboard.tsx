@@ -256,26 +256,26 @@ const Dashboard: React.FC<DashboardProps> = ({
           </Card>
         </div>
 
-        {/* Your Goals */}
-        <div className="max-w-md mx-auto">
-          <Card className="p-6 bg-glass/30 backdrop-blur-glass border-glass-border">
-            <h3 className="text-xl font-bold mb-6">Your Goals</h3>
-            <div className="space-y-4">
-              {userGoals.length > 0 ? (
-                userGoals.map((goal, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-glass/20 rounded-lg">
-                    <span className="font-medium">{goal}</span>
-                    <CheckCircle2 className="w-5 h-5 text-primary" />
-                  </div>
-                ))
-              ) : (
-                <div className="p-3 bg-glass/20 rounded-lg text-center text-muted-foreground">
-                  No goals set yet
+        {/* Your Goals - Full Width */}
+        <Card className="p-6 bg-glass/30 backdrop-blur-glass border-glass-border">
+          <h3 className="text-xl font-bold mb-6">Your Goals</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {userGoals.length > 0 ? (
+              userGoals.map((goal, index) => (
+                <div key={index} className="flex items-center justify-between p-4 bg-glass/20 rounded-lg">
+                  <span className="font-medium text-lg">{goal}</span>
+                  <CheckCircle2 className="w-6 h-6 text-primary" />
                 </div>
-              )}
-            </div>
-          </Card>
-        </div>
+              ))
+            ) : (
+              <div className="col-span-full p-6 bg-glass/20 rounded-lg text-center text-muted-foreground">
+                <Target className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
+                <p className="text-lg">No goals set yet</p>
+                <p className="text-sm">Complete your onboarding to set your fitness goals</p>
+              </div>
+            )}
+          </div>
+        </Card>
       </div>
     </div>
   );
