@@ -201,19 +201,70 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
   };
 
   const estimateDurationFromExercises = (exercises: Exercise[]): number => {
-    if (exercises.length === 0) return 30; // Default for empty day
+    if (exercises.length === 0) return 0; // No duration for empty day
     
-    // Estimate based on number of exercises and typical set times
-    // Assumption: ~3-4 minutes per set (including rest), average 3 sets per exercise
-    const avgSetsPerExercise = 3;
+    // Simple calculation for fallback - no AI call for synchronous operations
+    const avgSetsPerExercise = exercises.reduce((sum, ex) => sum + ex.sets, 0) / exercises.length;
     const avgTimePerSet = 3.5; // minutes including rest
-    const warmupCooldown = 10; // minutes
-    
-    const estimatedTime = (exercises.length * avgSetsPerExercise * avgTimePerSet) + warmupCooldown;
-    return Math.round(estimatedTime);
+    const warmupCooldown = 15; // minutes
+    return Math.round((exercises.length * avgSetsPerExercise * avgTimePerSet) + warmupCooldown);
   };
 
-  const saveNewDay = () => {
+  const estimateDurationWithAI = async (exercises: Exercise[]): Promise<number> => {
+    if (exercises.length === 0) return 0; // No duration for empty day
+    
+    // Use AI to estimate duration based on actual exercises
+    try {
+      const exerciseData = exercises.map(ex => ({
+        name: ex.name,
+        sets: ex.sets,
+        reps: ex.reps,
+        restTime: ex.restTime,
+        muscleGroups: ex.muscleGroups
+      }));
+      
+      const prompt = `Estimate the total workout duration in minutes for these exercises (including warm-up and cool-down):
+${exerciseData.map(ex => `- ${ex.name}: ${ex.sets} sets of ${ex.reps}, rest: ${ex.restTime}, muscles: ${ex.muscleGroups.join(', ')}`).join('\n')}
+
+Consider:
+- Warm-up time (5-10 minutes)
+- Exercise execution time
+- Rest periods between sets
+- Cool-down/stretching (5-10 minutes)
+- Transitions between exercises
+
+Return only the estimated total duration as a number (in minutes).`;
+
+      const response = await googleAIService.adaptWorkoutPlan({
+        name: 'Duration Estimate',
+        goals: [],
+        duration: '4-6 weeks',
+        days: [{
+          day: 'Estimate',
+          name: 'Duration Calculation',
+          duration: 0,
+          exercises: exercises
+        }]
+      }, prompt);
+      
+      // Try to extract number from the AI response
+      const durationMatch = response.name.match(/\d+/) || response.duration.match(/\d+/);
+      const duration = durationMatch ? parseInt(durationMatch[0]) : 0;
+      
+      // Fallback calculation if AI fails
+      if (!duration || duration < 10) {
+        return estimateDurationFromExercises(exercises);
+      }
+      
+      return Math.max(10, Math.min(120, duration)); // Between 10-120 minutes
+    } catch (error) {
+      console.error('Error estimating duration with AI:', error);
+      // Fallback calculation
+      return estimateDurationFromExercises(exercises);
+    }
+  };
+
+  const saveNewDay = async () => {
     if (!localPlan || !newDay.day.trim() || !newDay.name.trim()) {
       toast({
         title: "Day information required",
@@ -252,7 +303,7 @@ export const ModifySchedule: React.FC<ModifyScheduleProps> = ({
     setShowDeleteConfirm({ type: 'day', dayIndex });
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!showDeleteConfirm || !localPlan) return;
 
     const updatedPlan = { ...localPlan };

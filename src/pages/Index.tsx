@@ -2,24 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import OnboardingForm from '@/components/OnboardingForm';
-import Dashboard from '@/components/Dashboard';
-import WorkoutSession from '@/components/WorkoutSession';
-import { DarkModeToggle } from '@/components/DarkModeToggle';
 import { ScheduleApproval } from '@/components/ScheduleApproval';
-import { LoadingAnimation } from '@/components/LoadingAnimation';
-import { RexChatbot } from '@/components/RexChatbot';
-
-import { googleAIService, WorkoutPlan } from '@/services/GoogleAIService';
-import { ModifySchedule } from '@/components/ModifySchedule';
-import { ViewPlan } from '@/components/ViewPlan';
-import { LoginDialog } from '@/components/LoginDialog';
 import { SignInPage } from '@/components/SignInPage';
-import { useWorkoutPlan } from '@/contexts/WorkoutPlanContext';
-import { Sidebar } from '@/components/Sidebar';
+import Dashboard from '@/components/Dashboard';
+import { WorkoutConfirmation } from '@/components/WorkoutConfirmation';
+import WorkoutSession from '@/components/WorkoutSession';
+import { ViewPlan } from '@/components/ViewPlan';
+import { ModifySchedule } from '@/components/ModifySchedule';
+import { ProgressCharts } from '@/components/ProgressCharts';
 import { AccountPage } from '@/components/AccountPage';
 import { UpdateMetrics } from '@/components/UpdateMetrics';
-import { ProgressCharts } from '@/components/ProgressCharts';
+import { Sidebar } from '@/components/Sidebar';
+import { DarkModeToggle } from '@/components/DarkModeToggle';
+import { RexChatbot } from '@/components/RexChatbot';
+import { LoadingAnimation } from '@/components/LoadingAnimation';
+import { useWorkoutPlan } from '@/contexts/WorkoutPlanContext';
 import { useAuth } from '@/hooks/useAuth';
+import { googleAIService, WorkoutPlan } from '@/services/GoogleAIService';
 import { firestoreService, UserData } from '@/services/FirestoreService';
 import { authService } from '@/services/AuthService';
 import { auth } from '@/lib/firebase';
@@ -27,7 +26,7 @@ import { Play, Target, BarChart3, Sparkles, Dumbbell, Zap, Trophy, ArrowLeft } f
 import heroImage from '@/assets/hero-fitness.jpg';
 import { useToast } from '@/hooks/use-toast';
 
-type AppState = 'landing' | 'sign-in' | 'onboarding' | 'dashboard' | 'workout' | 'schedule-approval' | 'modify-schedule' | 'view-plan' | 'account' | 'update-metrics' | 'progress-charts' | 'view-prs';
+type AppState = 'landing' | 'sign-in' | 'onboarding' | 'dashboard' | 'workout-confirmation' | 'workout' | 'schedule-approval' | 'modify-schedule' | 'view-plan' | 'account' | 'update-metrics' | 'progress-charts' | 'view-prs';
 
 const Index = () => {
   const [appState, setAppState] = useState<AppState>('landing');
@@ -227,7 +226,15 @@ const Index = () => {
   };
 
   const handleStartWorkout = () => {
+    setAppState('workout-confirmation');
+  };
+
+  const handleConfirmWorkout = () => {
     setAppState('workout');
+  };
+
+  const handleCancelWorkout = () => {
+    setAppState('dashboard');
   };
 
   const handleWorkoutComplete = () => {
@@ -427,6 +434,37 @@ const Index = () => {
           onBack={() => setAppState('dashboard')}
         />
       </>
+    );
+  }
+
+  if (appState === 'workout-confirmation') {
+    const getTodaysWorkout = () => {
+      if (!workoutPlan) return { name: 'Workout', exercises: 0, duration: 0 };
+      
+      const today = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+      const todaysWorkoutDay = workoutPlan.days.find(day => 
+        day.day.toLowerCase().trim() === today
+      );
+      
+      if (!todaysWorkoutDay) return { name: 'Workout', exercises: 0, duration: 0 };
+      
+      return {
+        name: todaysWorkoutDay.name,
+        exercises: todaysWorkoutDay.exercises.length,
+        duration: todaysWorkoutDay.duration
+      };
+    };
+
+    const todaysWorkout = getTodaysWorkout();
+
+    return (
+      <WorkoutConfirmation
+        onConfirm={handleConfirmWorkout}
+        onCancel={handleCancelWorkout}
+        workoutName={todaysWorkout.name}
+        exercises={todaysWorkout.exercises}
+        duration={todaysWorkout.duration}
+      />
     );
   }
 
@@ -712,12 +750,7 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Login Dialog */}
-      <LoginDialog 
-        isOpen={showLoginDialog}
-        onClose={() => setShowLoginDialog(false)}
-        onLoginComplete={handleLoginComplete}
-      />
+      {/* Login Dialog - Removed as LoginDialog component doesn't exist */}
     </div>
   );
 };
